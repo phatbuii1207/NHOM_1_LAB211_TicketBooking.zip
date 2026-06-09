@@ -20,6 +20,11 @@ public class Fan extends BaseEntity {
     }
 
     @Override
+    public String toCsvHeader() {
+        return "id,name,email,phone,passwordHash";
+    }
+
+    @Override
     public String toCsvLine() {
         return String.format("%s,%s,%s,%s,%s", id, name, email, phone, passwordHash);
     }
