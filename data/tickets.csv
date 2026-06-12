@@ -1,1 +1,12 @@
 id,matchId,seatId,fanId,purchasedAt,price
+S00002,A,1,2,VIP
+...
+S01000,A,20,50,VIP
+
+S01001,B,1,1,VIP
+...
+S02000,B,20,50,VIP
+
+S02001,C,1,1,REGULAR
+...
+S10000,F,30,50,REGULAR
