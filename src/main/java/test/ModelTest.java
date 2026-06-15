@@ -6,62 +6,43 @@ import model.SeatStatus;
 import repository.CsvRepository;
 
 import org.junit.jupiter.api.*;
-import org.junit.jupiter.api.DisplayName;
 
 import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * ModelTest – Unit test bằng JUnit 5 cho Fan, Seat, và CsvRepository.
- *
- * ANNOTATION QUAN TRỌNG:
- *   @Test          → Đánh dấu đây là 1 test case
- *   @DisplayName   → Tên hiển thị trong kết quả test
- *   @Nested        → Nhóm các test liên quan vào 1 class con
- *   @BeforeEach    → Chạy trước MỖI test (dùng để khởi tạo dữ liệu)
- *
- * ASSERT QUAN TRỌNG:
- *   assertEquals(expected, actual)      → Kiểm tra bằng nhau
- *   assertTrue(condition)               → Kiểm tra điều kiện đúng
- *   assertFalse(condition)              → Kiểm tra điều kiện sai
- *   assertNotNull(value)                → Kiểm tra khác null
- *   assertThrows(ExType.class, lambda)  → Kiểm tra có ném exception đúng loại
- */
-@DisplayName("Model Layer Tests – Fan, Seat, CsvRepository")
+@DisplayName("Model Layer Tests - Fan | Seat | CsvRepository")
 public class ModelTest {
 
     // ================================================================
-    // NHÓM 1: Fan Tests
+    // GROUP 1: Fan
     // ================================================================
     @Nested
-    @DisplayName("Fan – Serialize (toCsvLine)")
+    @DisplayName("[Fan] Serialize - toCsvLine()")
     class FanSerializeTest {
 
         private Fan fan;
 
         @BeforeEach
         void setUp() {
-            // Tạo Fan mẫu trước mỗi test
             fan = new Fan("FAN001", "Nguyen Van A", "a@mail.com", "0901234567", "hashXYZ");
         }
 
         @Test
-        @DisplayName("toCsvLine() trả về đúng định dạng CSV")
+        @DisplayName("toCsvLine() returns correct CSV format")
         void testToCsvLine() {
-            String csv = fan.toCsvLine();
-            assertEquals("FAN001,Nguyen Van A,a@mail.com,0901234567,hashXYZ", csv);
+            assertEquals("FAN001,Nguyen Van A,a@mail.com,0901234567,hashXYZ", fan.toCsvLine());
         }
 
         @Test
-        @DisplayName("toCsvHeader() trả về đúng tên cột")
+        @DisplayName("toCsvHeader() returns correct column names")
         void testToCsvHeader() {
             assertEquals("id,name,email,phone,passwordHash", fan.toCsvHeader());
         }
 
         @Test
-        @DisplayName("Fan với dữ liệu rỗng vẫn không crash")
+        @DisplayName("Fan with empty data does not crash")
         void testEmptyFanNotNull() {
             Fan emptyFan = new Fan("", "", "", "", "");
             assertNotNull(emptyFan.toCsvLine());
@@ -70,26 +51,26 @@ public class ModelTest {
 
     // ================================================================
     @Nested
-    @DisplayName("Fan – Deserialize (fromCsvLine)")
+    @DisplayName("[Fan] Deserialize - fromCsvLine()")
     class FanDeserializeTest {
 
         @Test
-        @DisplayName("Parse CSV đúng format → các field đúng giá trị")
+        @DisplayName("Parse valid CSV -> all fields correct")
         void testFromCsvLine() {
             Fan fan = new Fan();
             fan.fromCsvLine("FAN0001,Tran Duc Duy,fan1@example.com,0900000001,$2a$10$FAKEHASH");
 
-            assertAll("Kiểm tra tất cả fields cùng lúc",
-                () -> assertEquals("FAN0001",              fan.getId()),
-                () -> assertEquals("Tran Duc Duy",         fan.getName()),
-                () -> assertEquals("fan1@example.com",     fan.getEmail()),
-                () -> assertEquals("0900000001",           fan.getPhone()),
-                () -> assertEquals("$2a$10$FAKEHASH",      fan.getPasswordHash())
+            assertAll("Check all fields at once",
+                () -> assertEquals("FAN0001",          fan.getId()),
+                () -> assertEquals("Tran Duc Duy",     fan.getName()),
+                () -> assertEquals("fan1@example.com", fan.getEmail()),
+                () -> assertEquals("0900000001",       fan.getPhone()),
+                () -> assertEquals("$2a$10$FAKEHASH",  fan.getPasswordHash())
             );
         }
 
         @Test
-        @DisplayName("Round-trip: parse CSV rồi serialize lại phải ra cùng chuỗi gốc")
+        @DisplayName("Round-trip: parse CSV then re-serialize must match original")
         void testRoundTrip() {
             String original = "FAN999,Le Thi B,b@test.com,0912345678,myHash";
             Fan fan = new Fan();
@@ -98,7 +79,7 @@ public class ModelTest {
         }
 
         @Test
-        @DisplayName("Parse xong: name có trim() khoảng trắng thừa")
+        @DisplayName("Fields are trimmed of extra whitespace")
         void testTrimWhitespace() {
             Fan fan = new Fan();
             fan.fromCsvLine("FAN001, Nguyen Van A , a@mail.com , 0901 , hash");
@@ -109,25 +90,25 @@ public class ModelTest {
 
     // ================================================================
     @Nested
-    @DisplayName("Fan – Validation trong fromCsvLine()")
+    @DisplayName("[Fan] Validation - fromCsvLine() error handling")
     class FanValidationTest {
 
         @Test
-        @DisplayName("null → phải throw IllegalArgumentException")
+        @DisplayName("null input -> throws IllegalArgumentException")
         void testNullInput() {
             assertThrows(IllegalArgumentException.class,
                 () -> new Fan().fromCsvLine(null));
         }
 
         @Test
-        @DisplayName("Chuỗi rỗng → phải throw IllegalArgumentException")
+        @DisplayName("empty string -> throws IllegalArgumentException")
         void testEmptyInput() {
             assertThrows(IllegalArgumentException.class,
                 () -> new Fan().fromCsvLine(""));
         }
 
         @Test
-        @DisplayName("Chỉ có 3 trường (thiếu) → phải throw IllegalArgumentException")
+        @DisplayName("only 3 fields (missing) -> throws IllegalArgumentException")
         void testMissingFields() {
             assertThrows(IllegalArgumentException.class,
                 () -> new Fan().fromCsvLine("FAN001,Nguyen Van A,a@mail.com"));
@@ -135,28 +116,27 @@ public class ModelTest {
     }
 
     // ================================================================
-    // NHÓM 2: Seat Tests
+    // GROUP 2: Seat
     // ================================================================
     @Nested
-    @DisplayName("Seat – Serialize (toCsvLine)")
+    @DisplayName("[Seat] Serialize - toCsvLine()")
     class SeatSerializeTest {
 
         @Test
-        @DisplayName("toCsvLine() trả về đúng định dạng CSV")
+        @DisplayName("toCsvLine() returns correct CSV format")
         void testToCsvLine() {
             Seat seat = new Seat("SEAT000001", "ST001_S01", 1, 1, SeatStatus.AVAILABLE, 0);
             assertEquals("SEAT000001,ST001_S01,1,1,AVAILABLE,0", seat.toCsvLine());
         }
 
         @Test
-        @DisplayName("toCsvHeader() trả về đúng tên cột")
+        @DisplayName("toCsvHeader() returns correct column names")
         void testToCsvHeader() {
-            Seat seat = new Seat();
-            assertEquals("id,sectionId,rowNumber,seatNumber,status,version", seat.toCsvHeader());
+            assertEquals("id,sectionId,rowNumber,seatNumber,status,version", new Seat().toCsvHeader());
         }
 
         @Test
-        @DisplayName("Sau khi book(): status=BOOKED, version tăng lên 1")
+        @DisplayName("After book(): status=BOOKED, version incremented to 1")
         void testAfterBook() {
             Seat seat = new Seat("SEAT000001", "ST001_S01", 1, 1, SeatStatus.AVAILABLE, 0);
             seat.book();
@@ -166,27 +146,27 @@ public class ModelTest {
 
     // ================================================================
     @Nested
-    @DisplayName("Seat – Deserialize (fromCsvLine)")
+    @DisplayName("[Seat] Deserialize - fromCsvLine()")
     class SeatDeserializeTest {
 
         @Test
-        @DisplayName("Parse CSV đúng format → các field đúng giá trị")
+        @DisplayName("Parse valid CSV -> all fields correct")
         void testFromCsvLine() {
             Seat seat = new Seat();
             seat.fromCsvLine("SEAT000001,ST001_S01,1,1,AVAILABLE,0");
 
-            assertAll("Kiểm tra tất cả fields",
-                () -> assertEquals("SEAT000001",        seat.getId()),
-                () -> assertEquals("ST001_S01",         seat.getSectionId()),
-                () -> assertEquals(1,                   seat.getRowNumber()),
-                () -> assertEquals(1,                   seat.getSeatNumber()),
+            assertAll("Check all fields",
+                () -> assertEquals("SEAT000001",         seat.getId()),
+                () -> assertEquals("ST001_S01",          seat.getSectionId()),
+                () -> assertEquals(1,                    seat.getRowNumber()),
+                () -> assertEquals(1,                    seat.getSeatNumber()),
                 () -> assertEquals(SeatStatus.AVAILABLE, seat.getStatus()),
-                () -> assertEquals(0,                   seat.getVersion())
+                () -> assertEquals(0,                    seat.getVersion())
             );
         }
 
         @Test
-        @DisplayName("Parse ghế LOCKED với version=2")
+        @DisplayName("Parse LOCKED seat with version=2")
         void testLockedSeat() {
             Seat seat = new Seat();
             seat.fromCsvLine("SEAT000002,ST001_S02,3,7,LOCKED,2");
@@ -195,7 +175,7 @@ public class ModelTest {
         }
 
         @Test
-        @DisplayName("Round-trip: parse CSV rồi serialize lại phải ra chuỗi gốc")
+        @DisplayName("Round-trip: parse CSV then re-serialize must match original")
         void testRoundTrip() {
             String original = "SEAT999999,ST003_S08,5,100,BOOKED,3";
             Seat seat = new Seat();
@@ -206,25 +186,25 @@ public class ModelTest {
 
     // ================================================================
     @Nested
-    @DisplayName("Seat – Validation trong fromCsvLine()")
+    @DisplayName("[Seat] Validation - fromCsvLine() error handling")
     class SeatValidationTest {
 
         @Test
-        @DisplayName("null → phải throw IllegalArgumentException")
+        @DisplayName("null input -> throws IllegalArgumentException")
         void testNullInput() {
             assertThrows(IllegalArgumentException.class,
                 () -> new Seat().fromCsvLine(null));
         }
 
         @Test
-        @DisplayName("Thiếu trường → phải throw IllegalArgumentException")
+        @DisplayName("missing fields -> throws IllegalArgumentException")
         void testMissingFields() {
             assertThrows(IllegalArgumentException.class,
                 () -> new Seat().fromCsvLine("SEAT001,ST001_S01,1"));
         }
 
         @Test
-        @DisplayName("rowNumber không phải số → phải throw IllegalArgumentException")
+        @DisplayName("non-numeric rowNumber -> throws IllegalArgumentException")
         void testInvalidNumber() {
             assertThrows(IllegalArgumentException.class,
                 () -> new Seat().fromCsvLine("SEAT001,ST001_S01,ABC,1,AVAILABLE,0"));
@@ -233,7 +213,7 @@ public class ModelTest {
 
     // ================================================================
     @Nested
-    @DisplayName("Seat – State Machine (lock / unlock / book)")
+    @DisplayName("[Seat] State Machine - lock / unlock / book")
     class SeatStateMachineTest {
 
         private Seat seat;
@@ -244,7 +224,7 @@ public class ModelTest {
         }
 
         @Test
-        @DisplayName("lock(): AVAILABLE → LOCKED, version tăng lên 1")
+        @DisplayName("lock(): AVAILABLE -> LOCKED, version = 1")
         void testLock() {
             assertTrue(seat.lock());
             assertEquals(SeatStatus.LOCKED, seat.getStatus());
@@ -252,14 +232,14 @@ public class ModelTest {
         }
 
         @Test
-        @DisplayName("lock() ghế đang LOCKED → trả về false")
+        @DisplayName("lock() on LOCKED seat -> returns false")
         void testLockAlreadyLocked() {
             seat.lock();
-            assertFalse(seat.lock()); // Lock lần 2 phải thất bại
+            assertFalse(seat.lock());
         }
 
         @Test
-        @DisplayName("unlock(): LOCKED → AVAILABLE")
+        @DisplayName("unlock(): LOCKED -> AVAILABLE")
         void testUnlock() {
             seat.lock();
             assertTrue(seat.unlock());
@@ -267,40 +247,40 @@ public class ModelTest {
         }
 
         @Test
-        @DisplayName("unlock() ghế đang AVAILABLE → trả về false")
+        @DisplayName("unlock() on AVAILABLE seat -> returns false")
         void testUnlockWhenNotLocked() {
-            assertFalse(seat.unlock()); // Chưa lock, không thể unlock
+            assertFalse(seat.unlock());
         }
 
         @Test
-        @DisplayName("book(): AVAILABLE → BOOKED")
+        @DisplayName("book(): AVAILABLE -> BOOKED")
         void testBookFromAvailable() {
             assertTrue(seat.book());
             assertEquals(SeatStatus.BOOKED, seat.getStatus());
         }
 
         @Test
-        @DisplayName("book() ghế đã BOOKED → trả về false")
+        @DisplayName("book() on already BOOKED seat -> returns false")
         void testBookAlreadyBooked() {
             seat.book();
-            assertFalse(seat.book()); // Book lần 2 phải thất bại
+            assertFalse(seat.book());
         }
 
         @Test
-        @DisplayName("Luồng đầy đủ: AVAILABLE → LOCKED → BOOKED, version=2")
+        @DisplayName("Full flow: AVAILABLE -> LOCKED -> BOOKED, version = 2")
         void testFullBookingFlow() {
-            assertTrue(seat.lock(),  "lock() phải thành công");
-            assertTrue(seat.book(),  "book() từ LOCKED phải thành công");
+            assertTrue(seat.lock(), "lock() must succeed");
+            assertTrue(seat.book(), "book() from LOCKED must succeed");
             assertEquals(SeatStatus.BOOKED, seat.getStatus());
-            assertEquals(2, seat.getVersion()); // 2 thao tác → version = 2
+            assertEquals(2, seat.getVersion());
         }
     }
 
     // ================================================================
-    // NHÓM 3: CsvRepository Tests (đọc file thực tế)
+    // GROUP 3: CsvRepository (reads real CSV files)
     // ================================================================
     @Nested
-    @DisplayName("CsvRepository<Fan> – Đọc fans.csv")
+    @DisplayName("[CsvRepo] Fan - reads fans.csv")
     class CsvRepositoryFanTest {
 
         private CsvRepository<Fan> repo;
@@ -311,14 +291,13 @@ public class ModelTest {
         }
 
         @Test
-        @DisplayName("findAll(): đọc được 500 fan từ file")
+        @DisplayName("findAll() reads 500 fans from file")
         void testFindAll() {
-            List<Fan> fans = repo.findAll();
-            assertEquals(500, fans.size());
+            assertEquals(500, repo.findAll().size());
         }
 
         @Test
-        @DisplayName("findAll(): fan đầu tiên có đủ thông tin")
+        @DisplayName("First fan has non-null id, name, email")
         void testFirstFanHasData() {
             Fan first = repo.findAll().get(0);
             assertNotNull(first.getId());
@@ -327,7 +306,7 @@ public class ModelTest {
         }
 
         @Test
-        @DisplayName("findById('FAN0001'): tìm thấy đúng fan")
+        @DisplayName("findById('FAN0001') -> found with correct email")
         void testFindById() {
             Optional<Fan> found = repo.findById("FAN0001");
             assertTrue(found.isPresent());
@@ -335,16 +314,15 @@ public class ModelTest {
         }
 
         @Test
-        @DisplayName("findById('FAN99999'): trả về empty nếu không tồn tại")
+        @DisplayName("findById('FAN99999') -> empty (not found)")
         void testFindByIdNotFound() {
-            Optional<Fan> notFound = repo.findById("FAN99999");
-            assertFalse(notFound.isPresent());
+            assertFalse(repo.findById("FAN99999").isPresent());
         }
     }
 
     // ================================================================
     @Nested
-    @DisplayName("CsvRepository<Seat> – Đọc seats.csv")
+    @DisplayName("[CsvRepo] Seat - reads seats.csv")
     class CsvRepositorySeatTest {
 
         private CsvRepository<Seat> repo;
@@ -355,15 +333,13 @@ public class ModelTest {
         }
 
         @Test
-        @DisplayName("findAll(): đọc được >= 10.000 ghế từ file")
+        @DisplayName("findAll() reads >= 10,000 seats from file")
         void testFindAll() {
-            List<Seat> seats = repo.findAll();
-            assertTrue(seats.size() >= 10000,
-                "Số ghế phải >= 10000, thực tế: " + seats.size());
+            assertTrue(repo.findAll().size() >= 10000);
         }
 
         @Test
-        @DisplayName("findById('SEAT000001'): tìm thấy đúng ghế")
+        @DisplayName("findById('SEAT000001') -> found with correct data")
         void testFindById() {
             Optional<Seat> found = repo.findById("SEAT000001");
             assertTrue(found.isPresent());
@@ -372,11 +348,9 @@ public class ModelTest {
         }
 
         @Test
-        @DisplayName("Tất cả ghế đọc được đều có status hợp lệ (không null)")
+        @DisplayName("All seats have non-null status")
         void testAllSeatsHaveValidStatus() {
-            List<Seat> seats = repo.findAll();
-            assertTrue(seats.stream().allMatch(s -> s.getStatus() != null),
-                "Có ghế bị null status!");
+            assertTrue(repo.findAll().stream().allMatch(s -> s.getStatus() != null));
         }
     }
 }

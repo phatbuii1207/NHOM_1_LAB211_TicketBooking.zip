@@ -7,6 +7,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 /**
  * CsvRepository<T> – Lớp Generic đọc/ghi file CSV cho bất kỳ entity nào.
@@ -29,7 +31,7 @@ import java.util.Optional;
  *
  * @param <T> Kiểu entity – phải kế thừa BaseEntity (ví dụ: Fan, Seat)
  */
-public class CsvRepository<T extends BaseEntity> {
+public class CsvRepository<T extends BaseEntity> implements ICsvRepository<T> {
 
     // ---- Cấu hình ----
     private final String filePath;          // Đường dẫn file CSV (ví dụ: "data/fans.csv")
@@ -122,6 +124,26 @@ public class CsvRepository<T extends BaseEntity> {
                 .filter(entity -> entity.getId().equals(id))
                 .findFirst();
         // stream() + filter() = duyệt qua danh sách, giữ lại phần tử có id khớp
+    }
+
+    /**
+     * Tìm kiếm theo điều kiện tùy ý dùng Predicate<T>.
+     *
+     * Predicate<T> = hàm nhận vào 1 entity, trả về true/false.
+     * Những entity trả về true sẽ được giữ lại trong kết quả.
+     *
+     * Ví dụ:
+     *   findByCondition(f -> f.getEmail().endsWith("@gmail.com"))
+     *   findByCondition(s -> s.getStatus() == SeatStatus.AVAILABLE)
+     *
+     * @param condition Điều kiện lọc
+     * @return Danh sách entity thoả mãn điều kiện
+     */
+    @Override
+    public List<T> findByCondition(Predicate<T> condition) {
+        return findAll().stream()
+                .filter(condition)      // Chỉ giữ entity thoả mãn condition
+                .collect(Collectors.toList());
     }
 
     // ================================================================

@@ -1,0 +1,9 @@
+# Compiled output
+bin/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files (optional - giữ .vscode/ để share settings với nhóm)
+*.class
