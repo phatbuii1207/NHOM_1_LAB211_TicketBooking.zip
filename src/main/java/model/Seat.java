@@ -60,6 +60,11 @@ public class Seat extends BaseEntity {
     }
 
     @Override
+    public String toCsvHeader() {
+        return "id,sectionId,rowNumber,seatNumber,status,version";
+    }
+
+    @Override
     public String toCsvLine() {
         return String.format("%s,%s,%d,%d,%s,%d", id, sectionId, rowNumber, seatNumber, status.name(), version);
     }

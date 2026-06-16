@@ -1,0 +1,35 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Compile Java",
+            "type": "shell",
+            "command": "javac",
+            "args": [
+                "-cp", "${workspaceFolder}/lib/*",
+                "-d", "${workspaceFolder}/bin",
+                "-encoding", "UTF-8",
+                "${workspaceFolder}/src/main/java/model/*.java",
+                "${workspaceFolder}/src/main/java/repository/*.java",
+                "${workspaceFolder}/src/main/java/test/*.java"
+            ],
+            "group": "build",
+            "presentation": { "reveal": "silent" },
+            "problemMatcher": "$javac"
+        },
+        {
+            "label": "Run Tests",
+            "type": "shell",
+            "command": "chcp 65001 | Out-Null; java -jar '${workspaceFolder}/lib/junit-platform-console-standalone-1.10.2.jar' --class-path '${workspaceFolder}/bin' --scan-class-path --details=tree --details-theme=unicode",
+            "group": { "kind": "test", "isDefault": true },
+            "dependsOn": "Compile Java",
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared",
+                "clear": true,
+                "focus": true
+            },
+            "problemMatcher": []
+        }
+    ]
+}

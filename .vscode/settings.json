@@ -1,0 +1,26 @@
+{
+    "java.project.referencedLibraries": [
+        "lib/junit-jupiter-api-5.10.2.jar",
+        "lib/junit-jupiter-engine-5.10.2.jar",
+        "lib/junit-platform-commons-1.10.2.jar",
+        "lib/junit-platform-engine-1.10.2.jar",
+        "lib/junit-platform-launcher-1.10.2.jar",
+        "lib/opentest4j-1.3.0.jar"
+    ],
+    "java.project.sourcePaths": [
+        "src/main/java"
+    ],
+    "java.project.outputPath": "bin",
+    "java.test.config": {
+        "vmArgs": [],
+        "classPaths": [
+            "${workspaceFolder}/bin",
+            "${workspaceFolder}/lib/junit-jupiter-api-5.10.2.jar",
+            "${workspaceFolder}/lib/junit-jupiter-engine-5.10.2.jar",
+            "${workspaceFolder}/lib/junit-platform-commons-1.10.2.jar",
+            "${workspaceFolder}/lib/junit-platform-engine-1.10.2.jar",
+            "${workspaceFolder}/lib/junit-platform-launcher-1.10.2.jar",
+            "${workspaceFolder}/lib/opentest4j-1.3.0.jar"
+        ]
+    }
+}

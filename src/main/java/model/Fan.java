@@ -1,27 +1,32 @@
 package model;
 
-// CSV format: id,name,email,phone,password
+// CSV format: id,name,email,phone,passwordHash
 public class Fan extends BaseEntity {
 
     private String name;
     private String email;
     private String phone;
-    private String password;
+    private String passwordHash;
 
     public Fan() {
     }
 
-    public Fan(String id, String name, String email, String phone, String password) {
+    public Fan(String id, String name, String email, String phone, String passwordHash) {
         super(id);
         this.name = name;
         this.email = email;
         this.phone = phone;
-        this.password = password;
+        this.passwordHash = passwordHash;
+    }
+
+    @Override
+    public String toCsvHeader() {
+        return "id,name,email,phone,passwordHash";
     }
 
     @Override
     public String toCsvLine() {
-        return String.format("%s,%s,%s,%s,%s", id, name, email, phone, password);
+        return String.format("%s,%s,%s,%s,%s", id, name, email, phone, passwordHash);
     }
 
     @Override
@@ -39,7 +44,7 @@ public class Fan extends BaseEntity {
         this.name = p[1].trim();
         this.email = p[2].trim();
         this.phone = p[3].trim();
-        this.password = p[4].trim();
+        this.passwordHash = p[4].trim();
     }
 
     public String getName() {
@@ -66,11 +71,11 @@ public class Fan extends BaseEntity {
         this.phone = phone;
     }
 
-    public String getPassword() {
-        return password;
+    public String getPasswordHash() {
+        return passwordHash;
     }
 
-    public void setPassword(String password) {
-        this.password = password;
+    public void setPasswordHash(String passwordHash) {
+        this.passwordHash = passwordHash;
     }
 }
