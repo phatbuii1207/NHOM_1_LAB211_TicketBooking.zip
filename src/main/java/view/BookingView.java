@@ -72,15 +72,22 @@ public class BookingView {
         }
 
         // ── Bước 2: Chọn khu vực ─────────────────────────────────────
-        System.out.print("  Nhap ma khu vuc (VD: ST001_S01): ");
+        System.out.println("  Dinh dang dung: ST001_S01, ST001_S02, ST002_S01 ...");
+        System.out.println("  (Ten khu = <stadiumId>_<SXX>, VD: ST001_S01)");
+        System.out.print("  Nhap ma khu vuc: ");
         String sectionId = scanner.nextLine().trim();
         if (sectionId.isBlank()) {
             printError("Ma khu vuc khong duoc de trong!");
             return;
         }
 
-        // ── Bước 3: Hiển thị bản đồ ghế ──────────────────────────────
+        // ── Bước 3: Hiển thị ghế trống – nếu hết thì dừng ───────────
         System.out.println();
+        java.util.List<model.Seat> availableSeats = seatRepo.findAvailableInSection(sectionId);
+        if (availableSeats.isEmpty()) {
+            printError("Khu " + sectionId + " khong con ghe trong! Vui long chon khu khac.");
+            return;  // <-- Dừng tại đây, không hỏi nhập seatId nữa
+        }
         seatMapView.renderAvailableList(sectionId, 10); // Liệt kê 10 ghế trống
         System.out.println();
 
