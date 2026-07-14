@@ -19,11 +19,11 @@ import static org.junit.jupiter.api.Assertions.*;
  * RepositoryTest – Test CRUD + Read/Write file + Performance.
  *
  * Deliverable T4:
- *   - Repository CRUD test pass
- *   - Doc file >= 10k dong < 500ms
+ * - Repository CRUD test pass
+ * - Doc file >= 10k dong < 500ms
  *
  * NOTE: FanRepository va SeatRepository dung file TEMP rieng biet
- *       de khong lam hong data that trong data/fans.csv, data/seats.csv.
+ * de khong lam hong data that trong data/fans.csv, data/seats.csv.
  */
 @DisplayName("T4 Repository Layer Tests - Fan | Seat")
 public class RepositoryTest {
@@ -82,7 +82,7 @@ public class RepositoryTest {
             Optional<Fan> found = repo.findById("FAN001");
             assertTrue(found.isPresent(), "Phai tim thay FAN001");
             assertEquals("Nguyen Van A", found.get().getName());
-            assertEquals("a@mail.com",   found.get().getEmail());
+            assertEquals("a@mail.com", found.get().getEmail());
         }
 
         @Test
@@ -140,10 +140,10 @@ public class RepositoryTest {
             repo = new FanRepository(tempFile.getAbsolutePath());
 
             // Them data mau
-            repo.save(new Fan("F001", "Alice",   "alice@gmail.com",   "0901", "h1"));
-            repo.save(new Fan("F002", "Bob",     "bob@yahoo.com",     "0902", "h2"));
+            repo.save(new Fan("F001", "Alice", "alice@gmail.com", "0901", "h1"));
+            repo.save(new Fan("F002", "Bob", "bob@yahoo.com", "0902", "h2"));
             repo.save(new Fan("F003", "Charlie", "charlie@gmail.com", "0903", "h3"));
-            repo.save(new Fan("F004", "David",   "david@work.com",    "0904", "h4"));
+            repo.save(new Fan("F004", "David", "david@work.com", "0904", "h4"));
         }
 
         @Test
@@ -164,7 +164,7 @@ public class RepositoryTest {
         @Test
         @DisplayName("findByCondition() filter by gmail domain -> 2 results")
         void testFindByConditionGmail() {
-            List<Fan> gmails = repo.findByCondition(f -> f.getEmail().endsWith("@gmail.com"));
+            List<Fan> gmails = repo.findByCondition(f -> f.getEmail().endsWith("gmail.com"));
             assertEquals(2, gmails.size(), "Phai co 2 fan gmail");
         }
 
@@ -212,7 +212,7 @@ public class RepositoryTest {
         void testReadRealFile() {
             FanRepository realRepo = new FanRepository("data/fans.csv");
             assertEquals(500, realRepo.count(),
-                "fans.csv phai co dung 500 fan");
+                    "fans.csv phai co dung 500 fan");
         }
 
         @Test
@@ -227,12 +227,11 @@ public class RepositoryTest {
 
             Fan loaded = repo.findById("FAN999").get();
             assertAll("Round-trip: tat ca fields phai khop",
-                () -> assertEquals(original.getId(),           loaded.getId()),
-                () -> assertEquals(original.getName(),         loaded.getName()),
-                () -> assertEquals(original.getEmail(),        loaded.getEmail()),
-                () -> assertEquals(original.getPhone(),        loaded.getPhone()),
-                () -> assertEquals(original.getPasswordHash(), loaded.getPasswordHash())
-            );
+                    () -> assertEquals(original.getId(), loaded.getId()),
+                    () -> assertEquals(original.getName(), loaded.getName()),
+                    () -> assertEquals(original.getEmail(), loaded.getEmail()),
+                    () -> assertEquals(original.getPhone(), loaded.getPhone()),
+                    () -> assertEquals(original.getPasswordHash(), loaded.getPasswordHash()));
         }
     }
 
@@ -269,12 +268,11 @@ public class RepositoryTest {
             Optional<Seat> found = repo.findById("SEAT001");
             assertTrue(found.isPresent());
             assertAll("Tat ca fields phai dung",
-                () -> assertEquals("ST001_S01",          found.get().getSectionId()),
-                () -> assertEquals(2,                    found.get().getRowNumber()),
-                () -> assertEquals(5,                    found.get().getSeatNumber()),
-                () -> assertEquals(SeatStatus.AVAILABLE, found.get().getStatus()),
-                () -> assertEquals(0,                    found.get().getVersion())
-            );
+                    () -> assertEquals("ST001_S01", found.get().getSectionId()),
+                    () -> assertEquals(2, found.get().getRowNumber()),
+                    () -> assertEquals(5, found.get().getSeatNumber()),
+                    () -> assertEquals(SeatStatus.AVAILABLE, found.get().getStatus()),
+                    () -> assertEquals(0, found.get().getVersion()));
         }
 
         @Test
@@ -320,9 +318,9 @@ public class RepositoryTest {
             // Them 5 ghe mau
             repo.save(new Seat("S001", "SEC01", 1, 1, SeatStatus.AVAILABLE, 0));
             repo.save(new Seat("S002", "SEC01", 1, 2, SeatStatus.AVAILABLE, 0));
-            repo.save(new Seat("S003", "SEC01", 1, 3, SeatStatus.LOCKED,    1));
+            repo.save(new Seat("S003", "SEC01", 1, 3, SeatStatus.LOCKED, 1));
             repo.save(new Seat("S004", "SEC02", 2, 1, SeatStatus.AVAILABLE, 0));
-            repo.save(new Seat("S005", "SEC02", 2, 2, SeatStatus.BOOKED,    1));
+            repo.save(new Seat("S005", "SEC02", 2, 2, SeatStatus.BOOKED, 1));
         }
 
         @Test
@@ -451,9 +449,9 @@ public class RepositoryTest {
             System.out.println("[Performance] Read " + seats.size() + " seats in " + elapsed + "ms");
 
             assertTrue(seats.size() >= 10000,
-                "seats.csv phai co >= 10000 ghe, thuc te: " + seats.size());
+                    "seats.csv phai co >= 10000 ghe, thuc te: " + seats.size());
             assertTrue(elapsed < 500,
-                "Doc " + seats.size() + " ghe phai < 500ms, thuc te: " + elapsed + "ms");
+                    "Doc " + seats.size() + " ghe phai < 500ms, thuc te: " + elapsed + "ms");
         }
 
         @Test
@@ -469,7 +467,7 @@ public class RepositoryTest {
 
             assertEquals(500, fans.size());
             assertTrue(elapsed < 100,
-                "Doc 500 fan phai < 100ms, thuc te: " + elapsed + "ms");
+                    "Doc 500 fan phai < 100ms, thuc te: " + elapsed + "ms");
         }
 
         @Test
@@ -485,7 +483,7 @@ public class RepositoryTest {
                     + " results in " + elapsed + "ms");
 
             assertTrue(elapsed < 600,
-                "findAvailableSeats tren 10k ghe phai < 600ms, thuc te: " + elapsed + "ms");
+                    "findAvailableSeats tren 10k ghe phai < 600ms, thuc te: " + elapsed + "ms");
         }
     }
 }

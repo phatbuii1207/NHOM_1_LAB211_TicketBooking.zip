@@ -6,44 +6,63 @@ import java.util.Scanner;
  * MainView - Menu chinh ket noi toan bo he thong Ticket Booking.
  *
  * KET NOI MVC:
- *   MainView (View)
- *     +-- BookingView  -> BookingController -> SeatRepo / TicketRepo / TransRepo
- *     +-- SeatMapView  -> SeatRepository
- *     +-- ReportView   -> TicketRepo / TransRepo / SeatRepo
+ * MainView (View)
+ * +-- BookingView -> BookingController -> SeatRepo / TicketRepo / TransRepo
+ * +-- SeatMapView -> SeatRepository
+ * +-- ReportView -> TicketRepo / TransRepo / SeatRepo
  *
  * CACH CHAY:
- *   java -cp bin view.MainView
+ * java -cp bin view.MainView
  *
  * DEMO FLOW (end-to-end tren console):
- *   [1] Xem ban do ghe -> chon khu -> hien thi ASCII map
- *   [2] Dat ve         -> nhap matchId, sectionId, seatId -> xac nhan -> ket qua
- *   [3] Huy ve         -> chon ve -> xac nhan -> ghe tra ve AVAILABLE
- *   [4] Xem bao cao    -> tong quan + thong ke
- *   [0] Thoat
+ * [1] Xem ban do ghe -> chon khu -> hien thi ASCII map
+ * [2] Dat ve -> nhap matchId, sectionId, seatId -> xac nhan -> ket qua
+ * [3] Huy ve -> chon ve -> xac nhan -> ghe tra ve AVAILABLE
+ * [4] Xem bao cao -> tong quan + thong ke
+ * [0] Thoat
  */
 public class MainView {
 
     private final BookingView bookingView;
     private final SeatMapView seatMapView;
-    private final ReportView  reportView;
-    private final Scanner     scanner;
+    private final ReportView reportView;
+    private final Scanner scanner;
 
-    // Fan dang dang nhap (demo: dung ID co dinh, thuc te lay tu FanController.login)
-    private String currentFanId = "FAN0001";
+    // Fan dang dang nhap (demo: dung ID co dinh, thuc te lay tu
+    // FanController.login)
+    private String currentFanId;
 
-    public MainView() {
-        this.scanner     = new Scanner(System.in);
+    public MainView(String fanId) {
+        this.scanner = new Scanner(System.in);
         this.bookingView = new BookingView();
         this.seatMapView = new SeatMapView();
-        this.reportView  = new ReportView();
+        this.reportView = new ReportView();
+        this.currentFanId = fanId;
     }
+
+    /*
+     * public MainView() {
+     * this("FAN0001");
+     * }
+     */
 
     // ================================================================
     // MAIN ENTRY POINT
     // ================================================================
 
     public static void main(String[] args) {
-        new MainView().run();
+        LoginView loginView = new LoginView();
+        loginView.displayLoginScreen();
+
+        if (loginView.isLoggedIn()) {
+            if (!loginView.isAdmin()) {
+                MainView mainView = new MainView(loginView.getCurrentUserId());
+                mainView.run();
+            } else {
+                AdminView adminView = new AdminView();
+                adminView.run(loginView.getCurrentUserId());
+            }
+        }
     }
 
     /**
@@ -64,7 +83,7 @@ public class MainView {
                 case "4" -> reportView.run();
                 case "5" -> handleSwitchFan();
                 case "0" -> running = false;
-                default  -> System.out.println("  [!] Lua chon khong hop le. Vui long chon lai.");
+                default -> System.out.println("  [!] Lua chon khong hop le. Vui long chon lai.");
             }
         }
 
@@ -90,7 +109,8 @@ public class MainView {
         }
         System.out.print("  Ten khu vuc (de hien thi, co the bo trong): ");
         String sectionName = scanner.nextLine().trim();
-        if (sectionName.isBlank()) sectionName = sectionId;
+        if (sectionName.isBlank())
+            sectionName = sectionId;
 
         seatMapView.render(sectionId, sectionName);
     }
