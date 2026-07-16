@@ -36,38 +36,54 @@ public class AuthController {
     // ================================================================
 
     /**
-     * Kết quả trả về của register/login.
+     * Ket qua tra ve cua register/login.
      */
     public static class AuthResult {
         private final boolean success;
-        private final Fan fan;
-        private final String message;
+        private final Fan     fan;
+        private final String  message;
 
         private AuthResult(boolean success, Fan fan, String message) {
             this.success = success;
-            this.fan = fan;
+            this.fan     = fan;
             this.message = message;
         }
 
-        public static AuthResult ok(Fan fan) {
-            return new AuthResult(true, fan, "Thanh cong");
+        public static AuthResult ok(Fan fan)      { return new AuthResult(true,  fan,  "Thanh cong"); }
+        public static AuthResult fail(String msg) { return new AuthResult(false, null, msg); }
+
+        public boolean isSuccess() { return success; }
+        public Fan     getFan()    { return fan; }
+        public String  getMessage(){ return message; }
+    }
+
+    // ================================================================
+    // ROLE – Phan biet Fan va Admin
+    // ================================================================
+
+    public enum Role { FAN, ADMIN }
+
+    /**
+     * AuthSession – Luu thong tin phien lam viec sau khi dang nhap.
+     *   role = FAN   → fan thuong, chi xem ghe / dat ve / huy ve
+     *   role = ADMIN → quan tri vien, xem bao cao toan he thong
+     */
+    public static class AuthSession {
+        private final Role   role;
+        private final Fan    fan;    // null neu la Admin
+        private final String displayName;
+
+        public AuthSession(Role role, Fan fan, String displayName) {
+            this.role        = role;
+            this.fan         = fan;
+            this.displayName = displayName;
         }
 
-        public static AuthResult fail(String msg) {
-            return new AuthResult(false, null, msg);
-        }
-
-        public boolean isSuccess() {
-            return success;
-        }
-
-        public Fan getFan() {
-            return fan;
-        }
-
-        public String getMessage() {
-            return message;
-        }
+        public Role   getRole()        { return role; }
+        public Fan    getFan()         { return fan; }
+        public String getDisplayName() { return displayName; }
+        public boolean isAdmin()       { return role == Role.ADMIN; }
+        public String  getId()         { return fan != null ? fan.getId() : "ADMIN"; }
     }
 
     /**
@@ -134,6 +150,25 @@ public class AuthController {
         }
 
         return AuthResult.ok(fan);
+    }
+
+    // ================================================================
+    // DANG NHAP ADMIN
+    // ================================================================
+
+    /**
+     * Dang nhap admin bang password co dinh.
+     * Password mac dinh: "admin123" (chi dung cho demo/lab).
+     *
+     * @return AuthSession voi role=ADMIN neu dung, null neu sai
+     */
+    public AuthSession loginAdmin(String password) {
+        final String ADMIN_PASSWORD = "admin123";
+        if (ADMIN_PASSWORD.equals(password)) {
+            // Admin khong co Fan object, dung displayName = "Admin"
+            return new AuthSession(Role.ADMIN, null, "Admin");
+        }
+        return null; // Sai mat khau
     }
 
     // ================================================================

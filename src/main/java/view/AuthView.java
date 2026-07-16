@@ -2,24 +2,29 @@ package view;
 
 import controller.AuthController;
 import controller.AuthController.AuthResult;
+import controller.AuthController.AuthSession;
+import controller.AuthController.Role;
 import model.Fan;
 
 import java.util.Scanner;
 
 /**
- * AuthView – Màn hình đăng ký / đăng nhập trên console.
+ * AuthView – Man hinh dang ky / dang nhap tren console.
  *
- * LUỒNG:
- *   Khi app khởi động → AuthView.run() → user chọn:
- *     [1] Dang nhap  → nhập email + password → trả về Fan
- *     [2] Dang ky    → nhập name, email, phone, password → tạo tài khoản → tự động đăng nhập
- *     [0] Thoat      → thoát app
+ * LUONG:
+ *   [1] Dang nhap Fan   -> email + password -> AuthSession(FAN)
+ *   [2] Dang nhap Admin -> nhap password admin -> AuthSession(ADMIN)
+ *   [3] Dang ky Fan     -> nhap thong tin -> tao tai khoan -> AuthSession(FAN)
+ *   [0] Thoat           -> tra ve null
  *
- *   Sau khi đăng nhập thành công → MainView.run(fanId) chạy tiếp
+ * TRA VE:
+ *   AuthSession chua role (FAN/ADMIN) va Fan object (null neu Admin)
+ *   MainView dung role nay de hien thi menu tuong ung.
  *
- * GHI CHÚ:
- *   500 fan có sẵn trong fans.csv dùng BCrypt hash khác format →
- *   Không đăng nhập được bằng tài khoản đó. Hãy TỰ ĐĂNG KÝ tài khoản mới.
+ * GHI CHU:
+ *   Admin password mac dinh: "admin123"
+ *   500 fan co san trong fans.csv dung BCrypt hash khac format,
+ *   nen chi login duoc bang tai khoan TU DANG KY qua app nay.
  */
 public class AuthView {
 
@@ -37,41 +42,45 @@ public class AuthView {
     }
 
     // ================================================================
-    // RUN – Trả về Fan sau khi login thành công, null nếu thoát
+    // RUN – Tra ve AuthSession, null neu thoat
     // ================================================================
 
     /**
-     * Hiển thị màn hình auth và lặp cho đến khi đăng nhập thành công hoặc user thoát.
+     * Hien thi man hinh auth va lap cho den khi login thanh cong hoac thoat.
      *
-     * @return Fan đã đăng nhập, hoặc null nếu user chọn thoát
+     * @return AuthSession neu dang nhap thanh cong, null neu thoat
      */
-    public Fan run() {
+    public AuthSession run() {
         printBanner();
         while (true) {
             printAuthMenu();
             String choice = scanner.nextLine().trim();
             switch (choice) {
                 case "1" -> {
-                    Fan fan = handleLogin();
-                    if (fan != null) return fan; // đăng nhập thành công → vào app
+                    AuthSession session = handleFanLogin();
+                    if (session != null) return session;
                 }
                 case "2" -> {
-                    Fan fan = handleRegister();
-                    if (fan != null) return fan; // đăng ký + tự login → vào app
+                    AuthSession session = handleAdminLogin();
+                    if (session != null) return session;
                 }
-                case "0" -> { return null; } // thoát
-                default  -> System.out.println("  [!] Lua chon khong hop le!\n");
+                case "3" -> {
+                    AuthSession session = handleRegister();
+                    if (session != null) return session;
+                }
+                case "0" -> { return null; }
+                default -> System.out.println("  [!] Lua chon khong hop le!\n");
             }
         }
     }
 
     // ================================================================
-    // ĐĂNG NHẬP
+    // DANG NHAP FAN
     // ================================================================
 
-    private Fan handleLogin() {
+    private AuthSession handleFanLogin() {
         System.out.println();
-        System.out.println("  === DANG NHAP ===");
+        System.out.println("  === DANG NHAP (Fan) ===");
 
         System.out.print("  Email: ");
         String email = scanner.nextLine().trim();
@@ -86,7 +95,8 @@ public class AuthView {
             System.out.println();
             System.out.println("  [OK] Chao mung, " + fan.getName() + "! (ID: " + fan.getId() + ")");
             System.out.println();
-            return fan;
+            // Tao AuthSession voi role = FAN
+            return new AuthSession(Role.FAN, fan, fan.getName());
         } else {
             System.out.println("  [FAIL] " + result.getMessage());
             System.out.println();
@@ -95,12 +105,36 @@ public class AuthView {
     }
 
     // ================================================================
-    // ĐĂNG KÝ
+    // DANG NHAP ADMIN
     // ================================================================
 
-    private Fan handleRegister() {
+    private AuthSession handleAdminLogin() {
         System.out.println();
-        System.out.println("  === DANG KY TAI KHOAN ===");
+        System.out.println("  === DANG NHAP QUAN TRI VIEN (Admin) ===");
+        System.out.print("  Mat khau admin: ");
+        String password = scanner.nextLine().trim();
+
+        AuthSession session = auth.loginAdmin(password);
+
+        if (session != null) {
+            System.out.println();
+            System.out.println("  [OK] Chao mung, Admin!");
+            System.out.println();
+            return session;
+        } else {
+            System.out.println("  [FAIL] Sai mat khau admin!");
+            System.out.println();
+            return null;
+        }
+    }
+
+    // ================================================================
+    // DANG KY FAN MOI
+    // ================================================================
+
+    private AuthSession handleRegister() {
+        System.out.println();
+        System.out.println("  === DANG KY TAI KHOAN FAN ===");
 
         System.out.print("  Ho va ten: ");
         String name = scanner.nextLine().trim();
@@ -117,7 +151,6 @@ public class AuthView {
         System.out.print("  Nhap lai mat khau: ");
         String confirm = scanner.nextLine().trim();
 
-        // Kiểm tra mật khẩu khớp nhau
         if (!password.equals(confirm)) {
             System.out.println("  [FAIL] Mat khau nhap lai khong khop!");
             System.out.println();
@@ -130,10 +163,10 @@ public class AuthView {
             Fan fan = result.getFan();
             System.out.println();
             System.out.println("  [OK] Dang ky thanh cong!");
-            System.out.println("  Ma tai khoan cua ban: " + fan.getId());
+            System.out.println("  Ma tai khoan: " + fan.getId());
             System.out.println("  Dang nhap tu dong...");
             System.out.println();
-            return fan;
+            return new AuthSession(Role.FAN, fan, fan.getName());
         } else {
             System.out.println("  [FAIL] " + result.getMessage());
             System.out.println();
@@ -151,17 +184,17 @@ public class AuthView {
         System.out.println("  ||   TICKET BOOKING SYSTEM - LAB211      ||");
         System.out.println("  ||   NHOM 1 - HE THONG DAT VE BONG DA    ||");
         System.out.println("  " + "=".repeat(50));
-        System.out.println("  Luu y: Vui long DANG KY tai khoan moi de su dung.");
-        System.out.println("  (500 fan co san trong file chi danh cho du lieu mau)");
+        System.out.println("  Luu y: Dang ky tai khoan moi de su dung.");
         System.out.println();
     }
 
     private void printAuthMenu() {
-        System.out.println("  +-------------------------------+");
-        System.out.println("  |  [1] Dang nhap                |");
-        System.out.println("  |  [2] Dang ky tai khoan moi    |");
-        System.out.println("  |  [0] Thoat                    |");
-        System.out.println("  +-------------------------------+");
+        System.out.println("  +---------------------------------------+");
+        System.out.println("  |  [1] Dang nhap (Fan)                  |");
+        System.out.println("  |  [2] Dang nhap (Admin / Quan li)      |");
+        System.out.println("  |  [3] Dang ky tai khoan Fan moi        |");
+        System.out.println("  |  [0] Thoat                            |");
+        System.out.println("  +---------------------------------------+");
         System.out.print("  Chon: ");
     }
 }

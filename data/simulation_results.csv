@@ -1,0 +1,5 @@
+lockType,threads,success,fail,doubleBook,durationMs,throughput
+NO_LOCK,20,20,0,0,972,20.58
+SYNCHRONIZED,20,5,15,15,686,7.29
+OPTIMISTIC,20,17,3,0,305,55.74
+FILE_LOCK,20,0,20,0,12,0.00
