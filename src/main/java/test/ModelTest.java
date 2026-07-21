@@ -291,9 +291,10 @@ public class ModelTest {
         }
 
         @Test
-        @DisplayName("findAll() reads 500 fans from file")
+        @DisplayName("findAll() reads >= 500 fans from file")
         void testFindAll() {
-            assertEquals(500, repo.findAll().size());
+            assertTrue(repo.findAll().size() >= 500,
+                "fans.csv phai co it nhat 500 fan");
         }
 
         @Test

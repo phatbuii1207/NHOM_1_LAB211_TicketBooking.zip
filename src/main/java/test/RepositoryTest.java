@@ -208,11 +208,11 @@ public class RepositoryTest {
         }
 
         @Test
-        @DisplayName("Reads real fans.csv -> 500 fans")
+        @DisplayName("Reads real fans.csv -> >= 500 fans")
         void testReadRealFile() {
             FanRepository realRepo = new FanRepository("data/fans.csv");
-            assertEquals(500, realRepo.count(),
-                "fans.csv phai co dung 500 fan");
+            assertTrue(realRepo.count() >= 500,
+                "fans.csv phai co it nhat 500 fan (co the nhieu hon do co tai khoan dang ky moi)");
         }
 
         @Test
@@ -467,7 +467,8 @@ public class RepositoryTest {
 
             System.out.println("[Performance] Read " + fans.size() + " fans in " + elapsed + "ms");
 
-            assertEquals(500, fans.size());
+            assertTrue(fans.size() >= 500,
+                "Phai doc it nhat 500 fans tu file");
             assertTrue(elapsed < 100,
                 "Doc 500 fan phai < 100ms, thuc te: " + elapsed + "ms");
         }
