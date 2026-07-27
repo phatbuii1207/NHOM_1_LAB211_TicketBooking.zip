@@ -78,7 +78,7 @@ public class CsvRepository<T extends BaseEntity> implements ICsvRepository<T> {
      *
      * @return Danh sách tất cả entity; rỗng nếu file không có dữ liệu
      */
-    public List<T> findAll() {
+    public synchronized List<T> findAll() {
         List<T> result = new ArrayList<>();
 
         try (BufferedReader br = new BufferedReader(
@@ -161,7 +161,7 @@ public class CsvRepository<T extends BaseEntity> implements ICsvRepository<T> {
      * @param entities Danh sách mới cần ghi vào file
      * @return true nếu ghi thành công
      */
-    public boolean saveAll(List<T> entities) {
+    public synchronized boolean saveAll(List<T> entities) {
         try (BufferedWriter bw = new BufferedWriter(
                 new OutputStreamWriter(new FileOutputStream(filePath), StandardCharsets.UTF_8))) {
 
@@ -198,7 +198,7 @@ public class CsvRepository<T extends BaseEntity> implements ICsvRepository<T> {
      * @param entity Entity cần lưu
      * @return true nếu lưu thành công
      */
-    public boolean save(T entity) {
+    public synchronized boolean save(T entity) {
         List<T> all = findAll();        // Đọc tất cả lên memory
         boolean found = false;
 
@@ -223,7 +223,7 @@ public class CsvRepository<T extends BaseEntity> implements ICsvRepository<T> {
      * @param id ID cần xoá
      * @return true nếu tìm thấy và xoá thành công, false nếu không tìm thấy
      */
-    public boolean deleteById(String id) {
+    public synchronized boolean deleteById(String id) {
         List<T> all = findAll();
         // removeIf = xoá tất cả phần tử thoả mãn điều kiện
         boolean removed = all.removeIf(entity -> entity.getId().equals(id));

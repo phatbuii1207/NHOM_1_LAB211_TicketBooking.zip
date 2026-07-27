@@ -61,15 +61,64 @@ public class LoginController {
         return enteredPassword.equals(storedHash);
     }
 
-    /*
-     * public void updateFan(String fanId){
-     * Optional<Fan> found = fanRepository.findById(fanId);
-     * if(found.isEmpty()){
-     * return;
-     * }
-     * 
-     * }
+    /**
+     * Updates fan data with authorization checks.
+     * Admin can update any fan by ID.
+     * Fan can only update their own profile (operatorId must equal targetFanId).
+     *
+     * @param operatorId  ID of the user performing the change
+     * @param targetFanId ID of the fan to be modified
+     * @param newName     New name (ignored if null/blank)
+     * @param newEmail    New email (ignored if null/blank)
+     * @param newPhone    New phone (ignored if null/blank)
+     * @param newPassword New password (ignored if null/blank)
+     * @return boolean true if update was successful
      */
+    public boolean updateFanData(String operatorId, String targetFanId, String newName, String newEmail,
+            String newPhone, String newPassword) {
+        if (operatorId == null || operatorId.isBlank() || targetFanId == null || targetFanId.isBlank()) {
+            System.out.println("  [!] Operator ID and Target Fan ID cannot be empty.");
+            return false;
+        }
+
+        boolean operatorIsAdmin = checkAdminPermission(operatorId);
+        if (!operatorIsAdmin && !operatorId.trim().equalsIgnoreCase(targetFanId.trim())) {
+            System.out.println("  [!] Permission denied. Fans can only change their own data.");
+            return false;
+        }
+
+        Optional<Fan> targetFanOpt = fanRepository.findById(targetFanId.trim());
+        if (targetFanOpt.isEmpty()) {
+            System.out.println("  [!] Fan not found with ID: " + targetFanId);
+            return false;
+        }
+
+        Fan fan = targetFanOpt.get();
+        boolean modified = false;
+
+        if (newName != null && !newName.isBlank()) {
+            fan.setName(newName.trim());
+            modified = true;
+        }
+        if (newEmail != null && !newEmail.isBlank()) {
+            fan.setEmail(newEmail.trim());
+            modified = true;
+        }
+        if (newPhone != null && !newPhone.isBlank()) {
+            fan.setPhone(newPhone.trim());
+            modified = true;
+        }
+        if (newPassword != null && !newPassword.isBlank()) {
+            fan.setPasswordHash(newPassword.trim());
+            modified = true;
+        }
+
+        if (modified) {
+            return fanRepository.save(fan);
+        }
+
+        return false;
+    }
 
     // ================================================================
     // INNER CLASS: Login Result Wrapper

@@ -53,6 +53,10 @@ public class SeatRepository implements ICsvRepository<Seat> {
         return csv.save(seat);
     }
 
+    public boolean saveAll(List<Seat> seats) {
+        return csv.saveAll(seats);
+    }
+
     @Override
     public boolean deleteById(String id) {
         return csv.deleteById(id);
@@ -156,6 +160,27 @@ public class SeatRepository implements ICsvRepository<Seat> {
         if (!seat.book()) return false;  // book() trả false nếu ghế đã BOOKED
 
         return save(seat);
+    }
+
+    /**
+     * Lưu ghế với cơ chế Optimistic Locking.
+     * Kiểm tra xem version hiện tại trong file có bằng expectedVersion không.
+     * Nếu bằng -> lưu (cập nhật trạng thái và version đã tăng) -> trả về true.
+     * Nếu không bằng -> version đã thay đổi bởi thread khác -> trả về false (conflict).
+     */
+    public synchronized boolean saveOptimistic(Seat seat, int expectedVersion) {
+        List<Seat> all = csv.findAll();
+        for (int i = 0; i < all.size(); i++) {
+            Seat current = all.get(i);
+            if (current.getId().equals(seat.getId())) {
+                if (current.getVersion() != expectedVersion) {
+                    return false;
+                }
+                all.set(i, seat);
+                return csv.saveAll(all);
+            }
+        }
+        return false;
     }
 
     /**

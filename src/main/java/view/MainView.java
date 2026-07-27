@@ -1,6 +1,7 @@
 package view;
 
 import java.util.Scanner;
+import controller.LoginController;
 
 /**
  * MainView - Menu chinh ket noi toan bo he thong Ticket Booking.
@@ -26,6 +27,7 @@ public class MainView {
     private final BookingView bookingView;
     private final SeatMapView seatMapView;
     private final ReportView reportView;
+    private final LoginController loginController;
     private final Scanner scanner;
 
     // Fan dang dang nhap (demo: dung ID co dinh, thuc te lay tu
@@ -37,6 +39,7 @@ public class MainView {
         this.bookingView = new BookingView();
         this.seatMapView = new SeatMapView();
         this.reportView = new ReportView();
+        this.loginController = new LoginController();
         this.currentFanId = fanId;
     }
 
@@ -82,6 +85,7 @@ public class MainView {
                 case "3" -> bookingView.runCancel(currentFanId);
                 case "4" -> reportView.run();
                 case "5" -> handleSwitchFan();
+                case "6" -> handleUpdateProfile();
                 case "0" -> running = false;
                 default -> System.out.println("  [!] Lua chon khong hop le. Vui long chon lai.");
             }
@@ -131,6 +135,40 @@ public class MainView {
     }
 
     // ================================================================
+    // CAP NHAT THONG TIN CA NHAN
+    // ================================================================
+
+    private void handleUpdateProfile() {
+        System.out.println();
+        System.out.println("  --- CAP NHAT THONG TIN CA NHAN ---");
+        System.out.println("  (Bo trong va nhan Enter de giu nguyen thong tin cu)");
+
+        System.out.print("  Nhap Name moi: ");
+        String name = scanner.nextLine().trim();
+
+        System.out.print("  Nhap Email moi: ");
+        String email = scanner.nextLine().trim();
+
+        System.out.print("  Nhap Phone moi: ");
+        String phone = scanner.nextLine().trim();
+
+        System.out.print("  Nhap Password moi: ");
+        String password = scanner.nextLine().trim();
+
+        if (name.isEmpty() && email.isEmpty() && phone.isEmpty() && password.isEmpty()) {
+            System.out.println("  [!] Khong co thong tin nao thay doi.");
+            return;
+        }
+
+        boolean success = loginController.updateFanData(currentFanId, currentFanId, name, email, phone, password);
+        if (success) {
+            System.out.println("  [OK] Cap nhat thong tin ca nhan thanh cong!");
+        } else {
+            System.out.println("  [!] Cap nhat thong tin that bai.");
+        }
+    }
+
+    // ================================================================
     // UI HELPERS
     // ================================================================
 
@@ -153,6 +191,7 @@ public class MainView {
         System.out.println("  |  [3] Huy ve                   |");
         System.out.println("  |  [4] Xem bao cao thong ke     |");
         System.out.println("  |  [5] Doi fan (demo)           |");
+        System.out.println("  |  [6] Cap nhat thong tin ca nhan|");
         System.out.println("  |  [0] Thoat                    |");
         System.out.println("  +-------------------------------+");
         System.out.print("  Chon: ");

@@ -7,161 +7,268 @@ import model.Ticket;
 import repository.SeatRepository;
 import repository.TicketRepository;
 import repository.TransactionRepository;
+import exception.*;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.channels.FileLock;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Optional;
 
 /**
- * BookingController – Xử lý luồng đặt vé (phiên bản NO_LOCK).
- *
- * ===== NO_LOCK là gì? =====
- * Đây là phiên bản ĐƠN GIẢN NHẤT, KHÔNG có cơ chế khoá ghế.
- * Mục đích: làm baseline để so sánh với các phiên bản sau (SYNC_LOCK, OPTIMISTIC_LOCK).
- *
- * Vấn đề của NO_LOCK (sẽ thấy rõ ở Tuần 6 khi test đa luồng):
- *   - Thread A đọc: ghế S001 = AVAILABLE
- *   - Thread B đọc: ghế S001 = AVAILABLE  (cùng lúc)
- *   - Thread A đặt → ghi BOOKED
- *   - Thread B đặt → ghi BOOKED  (CONFLICT! 2 người đặt 1 ghế)
- *
- * ===== LUỒNG ĐẶT VÉ (3 bước) =====
- *   1. Kiểm tra ghế còn AVAILABLE không
- *   2. Tạo Ticket và ghi xuống file
- *   3. Tạo BookingTransaction và ghi xuống file
- *   4. Đổi trạng thái ghế → BOOKED
- *
- * CÁCH DÙNG:
- *   BookingController bc = new BookingController();
- *   BookingResult result = bc.bookSeat("FAN001", "MATCH001", "SEAT000001");
- *   if (result.isSuccess()) System.out.println("Vé: " + result.getTicketId());
+ * BookingController - Xu ly luong dat ve (ho tro nhieu che do khoa dong thoi).
  */
 public class BookingController {
 
-    private final SeatRepository        seatRepo;
-    private final TicketRepository      ticketRepo;
+    public enum ConcurrencyMode {
+        NO_LOCK,
+        SYNCHRONIZED,
+        FILE_LOCK,
+        OPTIMISTIC_LOCK
+    }
+
+    private final SeatRepository seatRepo;
+    private final TicketRepository ticketRepo;
     private final TransactionRepository transRepo;
 
-    private static final DateTimeFormatter FMT =
-            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
-    // Constructor mặc định – dùng file thật
+    private static final Object JVM_LOCK = new Object();
+
+    // Constructor mac dinh - dung file that
     public BookingController() {
-        this.seatRepo   = new SeatRepository();
+        this.seatRepo = new SeatRepository();
         this.ticketRepo = new TicketRepository();
-        this.transRepo  = new TransactionRepository();
+        this.transRepo = new TransactionRepository();
     }
 
-    // Constructor cho test (inject repository tùy ý)
+    // Constructor cho test (inject repository tuy y)
     public BookingController(SeatRepository seatRepo,
-                             TicketRepository ticketRepo,
-                             TransactionRepository transRepo) {
-        this.seatRepo   = seatRepo;
+            TicketRepository ticketRepo,
+            TransactionRepository transRepo) {
+        this.seatRepo = seatRepo;
         this.ticketRepo = ticketRepo;
-        this.transRepo  = transRepo;
+        this.transRepo = transRepo;
     }
 
     // ================================================================
-    // ĐẶT VÉ – NO_LOCK (single-thread baseline)
+    // DAT VE CHUNG - Dieu phoi theo ConcurrencyMode
     // ================================================================
 
-    /**
-     * Đặt vé cho 1 fan, 1 trận, 1 ghế cụ thể.
-     *
-     * @param fanId   ID fan (VD: "FAN0001")
-     * @param matchId ID trận đấu (VD: "MATCH001")
-     * @param seatId  ID ghế (VD: "SEAT000001")
-     * @param price   Giá vé
-     * @return BookingResult chứa kết quả (success/fail + lý do)
-     */
     public BookingResult bookSeat(String fanId, String matchId, String seatId, double price) {
-        // ── BƯỚC 1: Kiểm tra ghế tồn tại ────────────────────────────
+        return bookSeat(fanId, matchId, seatId, price, ConcurrencyMode.NO_LOCK);
+    }
+
+    public BookingResult bookSeat(String fanId, String matchId, String seatId, double price, ConcurrencyMode mode) {
+        try {
+            if (mode == null) {
+                mode = ConcurrencyMode.NO_LOCK;
+            }
+            switch (mode) {
+                case SYNCHRONIZED:
+                    return bookSeatSynchronized(fanId, matchId, seatId, price);
+                case FILE_LOCK:
+                    return bookSeatFileLock(fanId, matchId, seatId, price);
+                case OPTIMISTIC_LOCK:
+                    return bookSeatOptimistic(fanId, matchId, seatId, price);
+                case NO_LOCK:
+                default:
+                    return bookSeatNoLock(fanId, matchId, seatId, price);
+            }
+        } catch (BookingException e) {
+            return BookingResult.fail(e.getMessage());
+        }
+    }
+
+    // ================================================================
+    // 1. NO_LOCK (Baseline)
+    // ================================================================
+    public BookingResult bookSeatNoLock(String fanId, String matchId, String seatId, double price) {
+        // BUOC 1: Kiem tra ghe ton tai
         Optional<Seat> found = seatRepo.findById(seatId);
         if (found.isEmpty()) {
-            return BookingResult.fail("Ghế không tồn tại: " + seatId);
+            throw new SeatNotFoundException("Ghe khong ton tai: " + seatId);
         }
 
-        // ── BƯỚC 2: Kiểm tra ghế có trống không ─────────────────────
+        // BUOC 2: Kiem tra ghe co trong khong
         Seat seat = found.get();
         if (seat.getStatus() != SeatStatus.AVAILABLE) {
-            return BookingResult.fail("Ghế không còn trống: " + seatId
-                    + " (trạng thái: " + seat.getStatus() + ")");
+            throw new SeatAlreadyBookedException("Ghe khong con trong: " + seatId
+                    + " (trang thai: " + seat.getStatus() + ")");
         }
 
-        // ── BƯỚC 3: Tạo Ticket ───────────────────────────────────────
-        String now      = LocalDateTime.now().format(FMT);
+        // BUOC 3: Tao Ticket
+        String now = LocalDateTime.now().format(FMT);
         String ticketId = generateTicketId();
-        Ticket ticket   = new Ticket(ticketId, matchId, seatId, fanId, now, price);
+        Ticket ticket = new Ticket(ticketId, matchId, seatId, fanId, now, price);
 
         if (!ticketRepo.save(ticket)) {
-            return BookingResult.fail("Lỗi ghi Ticket xuống file");
+            return BookingResult.fail("Loi ghi Ticket xuong file");
         }
 
-        // ── BƯỚC 4: Tạo BookingTransaction ───────────────────────────
+        // BUOC 4: Tao BookingTransaction
         String transId = generateTransactionId();
         BookingTransaction trans = new BookingTransaction(
                 transId, ticketId, fanId, price, "COMPLETED", now);
 
         if (!transRepo.save(trans)) {
-            // Rollback: xóa ticket vừa tạo
+            // Rollback: xoa ticket vua tao
             ticketRepo.deleteById(ticketId);
-            return BookingResult.fail("Lỗi ghi Transaction xuống file");
+            return BookingResult.fail("Loi ghi Transaction xuong file");
         }
 
-        // ── BƯỚC 5: Đổi trạng thái ghế → BOOKED ─────────────────────
-        seat.book(); // status AVAILABLE → BOOKED, version++
+        // BUOC 5: Doi trang thai ghe -> BOOKED
+        seat.book(); // status AVAILABLE -> BOOKED, version++
         if (!seatRepo.save(seat)) {
-            // Rollback: xóa ticket và transaction
+            // Rollback: xoa ticket va transaction
             ticketRepo.deleteById(ticketId);
             transRepo.deleteById(transId);
-            return BookingResult.fail("Lỗi cập nhật trạng thái ghế");
+            return BookingResult.fail("Loi cap nhat trang thai ghe");
         }
 
         return BookingResult.success(ticketId, transId);
     }
 
     // ================================================================
-    // HỦY VÉ
+    // 2. SYNCHRONIZED (Single JVM locking)
+    // ================================================================
+    private BookingResult bookSeatSynchronized(String fanId, String matchId, String seatId, double price) {
+        synchronized (JVM_LOCK) {
+            return bookSeatNoLock(fanId, matchId, seatId, price);
+        }
+    }
+
+    // ================================================================
+    // 3. FILE_LOCK (OS-level process locking)
+    // ================================================================
+    private BookingResult bookSeatFileLock(String fanId, String matchId, String seatId, double price) {
+        File lockFile = new File("data/seats.lock");
+        File parentDir = lockFile.getParentFile();
+        if (parentDir != null && !parentDir.exists()) {
+            parentDir.mkdirs();
+        }
+        synchronized (JVM_LOCK) {
+            try (FileOutputStream fos = new FileOutputStream(lockFile);
+                    FileLock lock = fos.getChannel().lock()) {
+
+                return bookSeatNoLock(fanId, matchId, seatId, price);
+
+            } catch (IOException e) {
+                throw new LockAcquisitionException("Loi acquire file lock khi dat ghe: " + seatId, e);
+            }
+        }
+    }
+
+    // ================================================================
+    // 4. OPTIMISTIC_LOCK (Version checking with conflict retry)
+    // ================================================================
+    private BookingResult bookSeatOptimistic(String fanId, String matchId, String seatId, double price) {
+        int maxRetries = 1;
+        int attempt = 0;
+        while (true) {
+            attempt++;
+
+            Optional<Seat> found = seatRepo.findById(seatId);
+            if (found.isEmpty()) {
+                throw new SeatNotFoundException("Ghe khong ton tai: " + seatId);
+            }
+
+            Seat seat = found.get();
+            if (seat.getStatus() != SeatStatus.AVAILABLE) {
+                throw new SeatAlreadyBookedException("Ghe khong con trong: " + seatId
+                        + " (trang thai: " + seat.getStatus() + ")");
+            }
+
+            int expectedVersion = seat.getVersion();
+
+            // Cap nhat trang thai ghe truoc de giu cho
+            seat.book(); // version++, status = BOOKED
+
+            boolean ok = seatRepo.saveOptimistic(seat, expectedVersion);
+            if (ok) {
+                // Thanh cong giu ghe! Tao Ticket & Transaction
+                String now = LocalDateTime.now().format(FMT);
+                String ticketId = generateTicketId();
+                Ticket ticket = new Ticket(ticketId, matchId, seatId, fanId, now, price);
+
+                if (!ticketRepo.save(ticket)) {
+                    // Rollback ghe
+                    seat.setStatus(SeatStatus.AVAILABLE);
+                    seat.setVersion(expectedVersion);
+                    seatRepo.save(seat);
+                    return BookingResult.fail("Loi ghi Ticket xuong file");
+                }
+
+                String transId = generateTransactionId();
+                BookingTransaction trans = new BookingTransaction(
+                        transId, ticketId, fanId, price, "COMPLETED", now);
+
+                if (!transRepo.save(trans)) {
+                    // Rollback Ticket va Ghe
+                    ticketRepo.deleteById(ticketId);
+                    seat.setStatus(SeatStatus.AVAILABLE);
+                    seat.setVersion(expectedVersion);
+                    seatRepo.save(seat);
+                    return BookingResult.fail("Loi ghi Transaction xuong file");
+                }
+
+                return BookingResult.success(ticketId, transId);
+            } else {
+                // Conflict
+                if (attempt >= maxRetries) {
+                    throw new OptimisticLockConflictException(
+                            "Dat ve that bai do xung dot du lieu (optimistic lock conflict) sau " + maxRetries
+                                    + " lan thu.");
+                }
+                // Backoff
+                try {
+                    Thread.sleep(30);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return BookingResult.fail("Giao dich bi ngat quang");
+                }
+            }
+        }
+    }
+
+    // ================================================================
+    // HUY VE
     // ================================================================
 
-    /**
-     * Hủy vé và trả ghế về AVAILABLE.
-     *
-     * @param ticketId ID vé cần hủy
-     * @return true nếu hủy thành công
-     */
     public boolean cancelTicket(String ticketId) {
         Optional<Ticket> found = ticketRepo.findById(ticketId);
-        if (found.isEmpty()) return false;
+        if (found.isEmpty())
+            return false;
 
         Ticket ticket = found.get();
 
-        // Trả ghế về AVAILABLE
+        // Tra ghe ve AVAILABLE
         Optional<Seat> seatOpt = seatRepo.findById(ticket.getSeatId());
         if (seatOpt.isPresent()) {
             Seat seat = seatOpt.get();
-            // Đặt lại về AVAILABLE bằng cách tạo Seat mới
             seat.setStatus(SeatStatus.AVAILABLE);
             seatRepo.save(seat);
         }
 
-        // Cập nhật transaction thành CANCELLED
+        // Cap nhat transaction thanh CANCELLED
         transRepo.findByCondition(t -> t.getTicketId().equals(ticketId))
-                 .forEach(t -> {
-                     t.setStatus("CANCELLED");
-                     transRepo.save(t);
-                 });
+                .forEach(t -> {
+                    t.setStatus("CANCELLED");
+                    transRepo.save(t);
+                });
 
-        // Xóa ticket
+        // Xoa ticket
         return ticketRepo.deleteById(ticketId);
     }
 
     // ================================================================
-    // NỘI BỘ – Sinh ID
+    // NOI BO - Sinh ID
     // ================================================================
 
     private static long ticketCounter = System.currentTimeMillis();
-    private static long transCounter  = System.currentTimeMillis() + 1;
+    private static long transCounter = System.currentTimeMillis() + 1;
 
     private String generateTicketId() {
         return String.format("TKT%08d", ++ticketCounter % 100_000_000L);
@@ -172,48 +279,51 @@ public class BookingController {
     }
 
     // ================================================================
-    // INNER CLASS: Kết quả đặt vé
+    // INNER CLASS: Ket qua dat ve
     // ================================================================
 
-    /**
-     * BookingResult – Kết quả trả về sau khi đặt vé.
-     *
-     * Dùng thay cho việc throw Exception:
-     *   result.isSuccess()    → true/false
-     *   result.getTicketId()  → mã vé (nếu thành công)
-     *   result.getMessage()   → lý do thất bại (nếu fail)
-     */
     public static class BookingResult {
         private final boolean success;
-        private final String  ticketId;
-        private final String  transactionId;
-        private final String  message;
+        private final String ticketId;
+        private final String transactionId;
+        private final String message;
 
         private BookingResult(boolean success, String ticketId, String transactionId, String message) {
-            this.success       = success;
-            this.ticketId      = ticketId;
+            this.success = success;
+            this.ticketId = ticketId;
             this.transactionId = transactionId;
-            this.message       = message;
+            this.message = message;
         }
 
         public static BookingResult success(String ticketId, String transId) {
-            return new BookingResult(true, ticketId, transId, "Đặt vé thành công");
+            return new BookingResult(true, ticketId, transId, "Dat ve thanh cong");
         }
 
         public static BookingResult fail(String reason) {
             return new BookingResult(false, null, null, reason);
         }
 
-        public boolean isSuccess()        { return success; }
-        public String  getTicketId()      { return ticketId; }
-        public String  getTransactionId() { return transactionId; }
-        public String  getMessage()       { return message; }
+        public boolean isSuccess() {
+            return success;
+        }
+
+        public String getTicketId() {
+            return ticketId;
+        }
+
+        public String getTransactionId() {
+            return transactionId;
+        }
+
+        public String getMessage() {
+            return message;
+        }
 
         @Override
         public String toString() {
             return success
-                ? "SUCCESS [ticket=" + ticketId + ", txn=" + transactionId + "]"
-                : "FAIL [" + message + "]";
+                    ? "SUCCESS [ticket=" + ticketId + ", txn=" + transactionId + "]"
+                    : "FAIL [" + message + "]";
         }
     }
 }
